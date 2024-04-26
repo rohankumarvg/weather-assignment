@@ -11,9 +11,15 @@ let recentCities = JSON.parse(localStorage.getItem('recentCities')) || [];
 // Function to fetch weather data from API
 async function fetchWeatherData(location) {
   try {
-    const response = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?q=${location}&appid=${apiKey}&units=metric`
-    );
+    let url = `https://api.openweathermap.org/data/2.5/weather?appid=${apiKey}&units=metric`;
+
+    if (location.includes('lat') && location.includes('lon')) {
+      url += `&${location}`;
+    } else {
+      url += `&q=${location}`;
+    }
+
+    const response = await fetch(url);
     const data = await response.json();
 
     if (response.ok) {
@@ -115,17 +121,25 @@ function displayError(message) {
 // Function to get current location
 function getCurrentLocation() {
   if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      position => {
-        const { latitude, longitude } = position.coords;
-        fetchWeatherData(`${latitude},${longitude}`);
-      },
-      error => {
-        displayError(
-          'Unable to retrieve your location. Please enter a city name.'
-        );
-      }
-    );
+    navigator.permissions
+      .query({ name: 'geolocation' })
+      .then(permissionStatus => {
+        if (permissionStatus.state === 'granted') {
+          navigator.geolocation.getCurrentPosition(
+            position => {
+              const { latitude, longitude } = position.coords;
+              fetchWeatherData(`lat=${latitude}&lon=${longitude}`);
+            },
+            error => {
+              displayError(
+                'Unable to retrieve your location. Please enter a city name.'
+              );
+            }
+          );
+        } else {
+          displayError('Please grant location permission to use this feature.');
+        }
+      });
   } else {
     displayError('Geolocation is not supported by your browser.');
   }
